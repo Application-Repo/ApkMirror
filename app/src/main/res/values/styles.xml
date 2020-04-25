@@ -31,7 +31,7 @@
     </style>
 
     <style name="Theme.Mal.Dark.Adapted" parent="Theme.Mal.Dark">
-        <item name="mal_card_background"></item>
+        <item name="mal_card_background">#2d2d2d</item>
     </style>
 
 </resources>

@@ -16,7 +16,8 @@ class App(
     val size: String,
     val url: String,
     val imageUrl: String,
-    var packageName: String = ""
+    var packageName: String = "",
+    val apkm: Boolean = false
 ) {
     val title = title
         get() {

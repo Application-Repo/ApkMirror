@@ -91,7 +91,8 @@ class HtmlParser(private val context: Context) {
                         version,
                         "",
                         size,
-                        "$baseUrl${if (type == "apk") url.split("/").dropLast(2).joinToString("/") else url}",
+                        "$baseUrl${if (type == "apk") url.split("/").dropLast(2)
+                            .joinToString("/") else url}",
                         "$baseUrl$imageUrl"
                     )
                     appList.add(app)
@@ -115,17 +116,17 @@ class HtmlParser(private val context: Context) {
                         when {
                             s.substring(0, 50).contains("id=\"description\"") -> {
                                 description =
-                                        s.split("id=\"description\"")[1]
-                                            .split("class=\"notes\">")[1]
-                                            .split("role=\"tabpanel")[0]
-                                            .replace("</div></div></div><div ", "")
+                                    s.split("id=\"description\"")[1]
+                                        .split("class=\"notes\">")[1]
+                                        .split("role=\"tabpanel")[0]
+                                        .replace("</div></div></div><div ", "")
                             }
                             s.substring(0, 50).contains("id=\"variants\"") -> {
                                 s.split("id=\"variants\"")[1]
                                     .split("class=\"table topmargin\">")[1]
                                     .split("class=\"table-row headerFont\"")
                                     .forEachIndexed { index, s ->
-                                        if (index > 0) {
+                                        if (index > 0 && false) {
                                             try {
                                                 val url = s.split("class=\"table-cell")[1]
                                                     .split("class=\"colorLightBlack\"")[1]
@@ -137,10 +138,11 @@ class HtmlParser(private val context: Context) {
                                                     .split("<a")[1]
                                                     .split("\">")[1]
                                                     .split("</a")[0]
-                                                val androidVersion = s.split("class=\"table-cell")[3]
-                                                    .split("<a")[1]
-                                                    .split("\">")[1]
-                                                    .split("</a")[0]
+                                                val androidVersion =
+                                                    s.split("class=\"table-cell")[3]
+                                                        .split("<a")[1]
+                                                        .split("\">")[1]
+                                                        .split("</a")[0]
                                                 val arch = s.split("class=\"table-cell")[2]
                                                     .split("<a")[1]
                                                     .split("\">")[1]
@@ -149,6 +151,7 @@ class HtmlParser(private val context: Context) {
                                                     .split("<a")[1]
                                                     .split("\">")[1]
                                                     .split("</a")[0]
+                                                Log.d("URL", url)
                                                 variants.add(
                                                     AppVariant(
                                                         app,
@@ -199,7 +202,17 @@ class HtmlParser(private val context: Context) {
                                 .split("src=\"")[1]
                                 .split("\">")[0]
                                 .replace("w=32&h=32", "w=128&h=128")
-                            versions.add(App(title, dev, version, date, size, "$baseUrl$url", "$baseUrl$imageUrl"))
+                            versions.add(
+                                App(
+                                    title,
+                                    dev,
+                                    version,
+                                    date,
+                                    size,
+                                    "$baseUrl$url",
+                                    "$baseUrl$imageUrl"
+                                )
+                            )
                         } catch (e: Exception) {
                             Log.wtf("ERROR", "Error at: $s\n\nMessage: ${e.localizedMessage}")
                         }
@@ -233,6 +246,10 @@ class HtmlParser(private val context: Context) {
                                 .split("<a")[1]
                                 .split("svg>")[1]
                                 .split("</a")[0]
+                            val apkm =
+                                s.split("class=\"table-cell")[1].split("class=\"table-cell")[0].contains(
+                                    "apkm-badge success"
+                                )
                             val androidVersion = s.split("class=\"table-cell")[3]
                                 .split(">")[1]
                                 .split("</div")[0]
@@ -242,7 +259,17 @@ class HtmlParser(private val context: Context) {
                             val dpi = s.split("class=\"table-cell")[4]
                                 .split(">")[1]
                                 .split("</div")[0]
-                            variants.add(AppVariant(app, "$baseUrl$url", version, androidVersion, arch, dpi))
+                            variants.add(
+                                AppVariant(
+                                    app,
+                                    "$baseUrl$url",
+                                    version,
+                                    androidVersion,
+                                    arch,
+                                    dpi,
+                                    apkm
+                                )
+                            )
                         } catch (e: Exception) {
                             Log.wtf("Error", "$index: $s\n\n${e.message}")
                         }
@@ -276,11 +303,11 @@ class HtmlParser(private val context: Context) {
         }
     }
 
-    fun openInstaller(url: String, listener: Listener): Int {
+    fun openInstaller(url: String, listener: Listener, apkm: Boolean = false): Int {
         val folder = File(Environment.getExternalStorageDirectory(), ".apkmirror")
         if (!folder.exists()) folder.mkdirs()
         val path = folder.absolutePath
-        return PRDownloader.download(url, path, "app.apk")
+        return PRDownloader.download(url, path, "app.apk${if (apkm) "m" else ""}")
             .build()
             .setOnProgressListener {
                 listener.run(((it.currentBytes * 100L) / it.totalBytes).toInt())
@@ -290,7 +317,7 @@ class HtmlParser(private val context: Context) {
             }
             .start(object : OnDownloadListener {
                 override fun onDownloadComplete() {
-                    listener.stop(File(path, "app.apk"))
+                    listener.stop(File(path, "app.apk${if (apkm) "m" else ""}"))
                 }
 
                 override fun onError(error: Error?) {
@@ -317,13 +344,15 @@ class HtmlParser(private val context: Context) {
     }
 
     private fun isNetworkAvailable(): Boolean {
-        val connectivityManager = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+        val connectivityManager =
+            context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
         val activeNetworkInfo = connectivityManager.activeNetworkInfo
         return activeNetworkInfo != null && activeNetworkInfo.isConnected
     }
 
     private fun isRootAvailable(): Boolean {
-        for (pathDir in System.getenv("PATH").split(":".toRegex()).dropLastWhile { it.isEmpty() }.toTypedArray()) {
+        for (pathDir in System.getenv("PATH").split(":".toRegex()).dropLastWhile { it.isEmpty() }
+            .toTypedArray()) {
             if (File(pathDir, "su").exists()) {
                 return true
             }
@@ -360,7 +389,7 @@ class HtmlParser(private val context: Context) {
     }
 
     fun installApk(file: File?) {
-        if (isRootGiven()) {
+        if (isRootGiven() && file?.endsWith(".apkm") != true) {
             executeCommand("cp ${file?.absolutePath} /data/local/tmp/\npm install -r /data/local/tmp/${file?.name}\n")
         } else
             try {
@@ -368,7 +397,8 @@ class HtmlParser(private val context: Context) {
                 Log.d("Dismiss Dialog", Try { VersionAdapter.progressDialog!!.dismiss() })
                 if (file!!.exists()) {
                     val fileNameArray =
-                        file.name.split(Pattern.quote(".").toRegex()).dropLastWhile { it.isEmpty() }.toTypedArray()
+                        file.name.split(Pattern.quote(".").toRegex()).dropLastWhile { it.isEmpty() }
+                            .toTypedArray()
                     if (fileNameArray[fileNameArray.size - 1] == "apk") {
                         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
                             val downloadedApk = getFileUri(context, file)
@@ -383,6 +413,24 @@ class HtmlParser(private val context: Context) {
                             intent.setDataAndType(
                                 Uri.fromFile(file),
                                 "application/vnd.android.package-archive"
+                            )
+                            intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                            context.startActivity(intent)
+                        }
+                    } else if (fileNameArray[fileNameArray.size - 1] == "apkm") {
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                            val downloadedApk = getFileUri(context, file)
+                            val intent = Intent(Intent.ACTION_VIEW).setDataAndType(
+                                downloadedApk,
+                                "application/octet-stream"
+                            )
+                            intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                            context.startActivity(intent)
+                        } else {
+                            val intent = Intent(Intent.ACTION_VIEW)
+                            intent.setDataAndType(
+                                Uri.fromFile(file),
+                                "application/octet-stream"
                             )
                             intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
                             context.startActivity(intent)

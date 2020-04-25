@@ -9,6 +9,7 @@ import android.annotation.SuppressLint
 import android.app.Activity
 import android.app.ProgressDialog
 import android.util.DisplayMetrics
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -50,6 +51,7 @@ class VariantAdapter(private var context: Activity, private var items: ArrayList
         var progressDialog: ProgressDialog? = null
     }
 
+    @SuppressLint("SetTextI18n")
     override fun onBindViewHolder(holder: ViewHolder, position: Int) {
         val app = items[position]
 
@@ -57,8 +59,8 @@ class VariantAdapter(private var context: Activity, private var items: ArrayList
         context.windowManager.defaultDisplay.getMetrics(displayMetrics)
 
         holder.card.layoutParams =
-                ViewGroup.LayoutParams(displayMetrics.widthPixels, ViewGroup.LayoutParams.WRAP_CONTENT)
-        holder.title.text = app.app.title
+            ViewGroup.LayoutParams(displayMetrics.widthPixels, ViewGroup.LayoutParams.WRAP_CONTENT)
+        holder.title.text = "${app.app.title}${if (app.apkm) " (BUNDLE)" else ""}"
         holder.version.text = app.version
         holder.dpi.text = app.dpi
         holder.androidVersion.text = app.androidVersion
@@ -86,7 +88,8 @@ class VariantAdapter(private var context: Activity, private var items: ArrayList
                     progressDialog!!.setIndeterminateDrawable(ThemeableProgressBar(context).indeterminateDrawable)
                     Thread {
                         val htmlParser = HtmlParser(context)
-                        val url = htmlParser.getApkUrl(htmlParser.getDownloadPage(app).variants[0].url)
+                        val url =
+                            htmlParser.getApkUrl(htmlParser.getDownloadPage(app).variants[0].url)
                         context.runOnUiThread {
                             progressDialog!!.setMessage("Download (1%)")
                         }
@@ -109,7 +112,7 @@ class VariantAdapter(private var context: Activity, private var items: ArrayList
                                     progressDialog?.dismiss()
                                 }
                             }
-                        })
+                        }, apkm = app.apkm)
                     }.start()
                 }
                 .onNegative { dialog, _ ->
